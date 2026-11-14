@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://ranojoyghosh.github.io/Ranojoy_VideoEditor/sitemap.xml

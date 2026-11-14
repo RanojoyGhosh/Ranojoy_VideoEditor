@@ -1,0 +1,55 @@
+/* ==========================================================================
+   Services: bento grid
+   ========================================================================== */
+.services__grid { display: grid; gap: 1rem; }
+.service {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: clamp(1.75rem, 3vw, 2.5rem);
+  min-height: 280px;
+  border-radius: var(--radius);
+  background: var(--bg-800);
+  border: 1px solid var(--line);
+  transition: transform 0.6s var(--ease-out), border-color 0.5s, background-color 0.5s;
+}
+.service::after { /* accent underline that grows on hover */
+  content: '';
+  position: absolute;
+  left: clamp(1.75rem, 3vw, 2.5rem);
+  bottom: 0;
+  width: 0;
+  height: 2px;
+  background: var(--accent);
+  transition: width 0.7s var(--ease-out);
+}
+.service__icon { width: 30px; height: 30px; color: var(--accent); transition: transform 0.6s var(--ease-out); }
+.service__title {
+  margin-top: auto;
+  padding-top: 2.5rem;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(1.35rem, 2vw, 1.65rem);
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  color: var(--sand-200);
+}
+.service__title small { font-family: var(--font-serif); font-style: italic; font-weight: 400; font-size: 0.8em; color: var(--muted); }
+.service__desc { margin-top: 0.75rem; color: var(--muted); font-size: 0.95rem; }
+.service__ideal { margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--line); font-size: var(--fs-small); color: var(--cream-50); }
+.service__ideal span { color: var(--muted); margin-right: 0.35rem; }
+
+@media (hover: hover) {
+  .service:hover { transform: translateY(-4px); border-color: var(--line-strong); background: var(--bg-700); }
+  .service:hover .service__icon { transform: translate(3px, -3px); }
+  .service:hover::after { width: calc(100% - 2 * clamp(1.75rem, 3vw, 2.5rem)); }
+}
+
+@media (min-width: 768px) { .services__grid { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 1024px) {
+  /* Bento rhythm on a 12-col grid: 5·4·3 on top, 3·4·5 below (still 3×2) */
+  .services__grid { grid-template-columns: repeat(12, 1fr); }
+  .service:nth-child(1), .service:nth-child(6) { grid-column: span 5; }
+  .service:nth-child(2), .service:nth-child(5) { grid-column: span 4; }
+  .service:nth-child(3), .service:nth-child(4) { grid-column: span 3; }
+}

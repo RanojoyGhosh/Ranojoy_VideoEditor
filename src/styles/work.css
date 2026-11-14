@@ -1,0 +1,127 @@
+/* ==========================================================================
+   Selected Work: swipe carousel (mobile/tablet) → pinned horizontal track (desktop)
+   ========================================================================== */
+.work { position: relative; padding-top: var(--section-y); padding-bottom: var(--section-y); }
+.work__track { max-width: var(--max-w); margin-inline: auto; }
+.work__intro { padding-inline: var(--gutter); max-width: 40rem; }
+.work__intro .eyebrow { margin-bottom: 1.5rem; }
+.work__lead { margin-top: 1.5rem; font-size: var(--fs-lead); color: var(--muted); }
+.work__lead em { font-family: var(--font-serif); font-size: 1.15em; color: var(--sand-200); }
+.work__hint { margin-top: 1.5rem; display: inline-flex; align-items: center; gap: 0.5rem; font-size: var(--fs-small); color: var(--muted); }
+.work__hint-desktop { display: none; }
+
+/* Mobile/tablet carousel */
+.work__cards {
+  --card-w: min(72vw, 300px);
+  display: flex;
+  gap: clamp(1rem, 4vw, 2rem);
+  margin-top: clamp(2.5rem, 6vw, 3.5rem);
+  padding: 0.5rem var(--gutter) 1.5rem;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: var(--gutter);
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.work__cards::-webkit-scrollbar { display: none; }
+.work__cards.is-dragging { scroll-snap-type: none; cursor: grabbing; }
+.work__cards.is-dragging * { pointer-events: none; }
+
+.work-card {
+  flex: none;
+  width: var(--card-w);
+  scroll-snap-align: start;
+}
+.work-card__media { width: 100%; cursor: pointer; transition: transform 0.7s var(--ease-out); }
+.work-card__media video { transition: transform 1s var(--ease-out); }
+.work-card__play {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  z-index: 2;
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(11, 31, 23, 0.6);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  border: 1px solid var(--line-strong);
+  color: var(--sand-200);
+  transition: transform 0.5s var(--ease-out), background-color 0.4s;
+}
+.work-card__play .icon { width: 16px; height: 16px; fill: currentColor; stroke: none; margin-left: 2px; }
+@media (hover: hover) {
+  .work-card__media:hover video { transform: scale(1.04); }
+  .work-card__media:hover .work-card__play { transform: scale(1.1); background: var(--accent); color: var(--on-accent); }
+}
+
+.work-card__meta { display: flex; align-items: flex-start; gap: 1rem; margin-top: 1.25rem; }
+.work-card__num {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 1.6rem;
+  line-height: 1;
+  color: var(--accent);
+}
+.work-card__title { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-h3); letter-spacing: -0.02em; color: var(--sand-200); line-height: 1.15; margin-bottom: 0.5rem; }
+.work-card__desc { margin-top: 0.85rem; font-size: var(--fs-small); color: var(--muted); max-width: 34ch; }
+
+.work__outro { padding: 1rem var(--gutter) 0; display: grid; gap: 0.5rem; justify-items: start; }
+.work__outro-text { font-size: clamp(1.6rem, 3vw, 2.5rem); }
+
+@media (min-width: 768px) {
+  .work__cards { --card-w: min(40vw, 320px); }
+}
+
+/* Desktop without pinning (reduced motion): static 3-column grid */
+@media (min-width: 1024px) {
+  .work__hint { display: none; }
+  .work__cards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: clamp(2rem, 4vw, 4rem);
+    overflow: visible;
+    padding-inline: var(--gutter);
+  }
+  .work-card { width: auto; }
+  .work-card:nth-child(2) { margin-top: 4rem; }
+  .work__outro { margin-top: 3rem; }
+}
+
+/* Desktop pinned horizontal track (class added by JS) */
+@media (min-width: 1024px) {
+  .work.is-pinned { padding: 0; }
+  .work.is-pinned .work__pin { height: 100svh; overflow: hidden; }
+  .work.is-pinned .work__track {
+    max-width: none;
+    margin: 0;
+    height: 100%;
+    width: max-content;
+    display: flex;
+    align-items: center;
+    gap: clamp(4rem, 8vw, 9rem);
+    padding-left: max(var(--gutter), calc((100vw - var(--max-w)) / 2 + var(--gutter)));
+    padding-right: 8vw;
+    padding-top: var(--nav-h);
+    will-change: transform;
+  }
+  .work.is-pinned .work__intro { flex: none; width: min(34vw, 30rem); padding: 0; }
+  .work.is-pinned .work__hint { display: inline-flex; }
+  .work.is-pinned .work__hint-desktop { display: inline; }
+  .work.is-pinned .work__hint-touch { display: none; }
+  .work.is-pinned .work__cards {
+    display: flex;
+    gap: clamp(3rem, 6vw, 7rem);
+    margin: 0;
+    padding: 0;
+    overflow: visible;
+    align-items: center;
+  }
+  .work.is-pinned .work-card { width: calc(min(60svh, 640px) * 9 / 16); }
+  .work.is-pinned .work-card:nth-child(2) { margin-top: 0; transform: translateY(5svh); }
+  .work.is-pinned .work-card:nth-child(1), .work.is-pinned .work-card:nth-child(3) { transform: translateY(-4svh); }
+  .work.is-pinned .work__outro { flex: none; width: 24rem; padding: 0; margin: 0; }
+}

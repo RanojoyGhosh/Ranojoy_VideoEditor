@@ -1,0 +1,27 @@
+/* ==========================================================================
+   Who I help
+   ========================================================================== */
+.audience__grid { display: grid; gap: 1rem; }
+.audience-card {
+  padding: clamp(1.75rem, 3vw, 2.5rem);
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: linear-gradient(180deg, rgba(27, 58, 44, 0.55), rgba(18, 41, 31, 0.2));
+  transition: transform 0.6s var(--ease-out), border-color 0.5s;
+}
+.audience-card__icon { width: 28px; height: 28px; color: var(--accent); margin-bottom: 2rem; }
+.audience-card h3 { font-family: var(--font-display); font-weight: 600; font-size: clamp(1.4rem, 2vw, 1.75rem); letter-spacing: -0.02em; color: var(--sand-200); line-height: 1.15; }
+.audience-card p { margin-top: 1.25rem; }
+.audience-card p span {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-size: var(--fs-xs);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+.audience-card__pain { color: var(--muted); }
+.audience-card__pain span { color: var(--muted); }
+.audience-card__gain { padding-top: 1.25rem; border-top: 1px dashed var(--line-strong); color: var(--cream-50); }
+.audience-card__gain span { color: var(--accent); }
+@media (hover: hover) { .audience-card:hover { transform: translateY(-4px); border-color: var(--line-strong); } }
+@media (min-width: 900px) { .audience__grid { grid-template-columns: repeat(3, 1fr); } }
