@@ -1,0 +1,30 @@
+/* ==========================================================================
+   Marquee strip
+   ========================================================================== */
+.marquee {
+  position: relative;
+  overflow: hidden;
+  border-block: 1px solid var(--line);
+  padding-block: clamp(1rem, 2vw, 1.5rem);
+}
+.marquee__track { display: flex; width: max-content; will-change: transform; }
+.marquee__group {
+  display: flex;
+  align-items: center;
+  flex: none;
+  gap: clamp(1.25rem, 3vw, 2.5rem);
+  padding-right: clamp(1.25rem, 3vw, 2.5rem);
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: clamp(1.4rem, 3vw, 2.5rem);
+  letter-spacing: -0.02em;
+  color: var(--sand-200);
+  white-space: nowrap;
+}
+.marquee__group i { font-style: normal; font-size: 0.55em; color: var(--accent); }
+.marquee__group span:nth-of-type(even) { font-family: var(--font-serif); font-style: italic; font-weight: 400; }
+
+/* No-JS / reduced motion fallback: gentle CSS loop */
+.marquee:not(.is-js) .marquee__track { animation: marquee 40s linear infinite; }
+@keyframes marquee { to { transform: translateX(-50%); } }
+@media (prefers-reduced-motion: reduce) { .marquee__track { animation: none !important; } }

@@ -1,0 +1,37 @@
+/* ==========================================================================
+   Cinematic quote band
+   ========================================================================== */
+.quote {
+  position: relative;
+  min-height: 90svh;
+  display: grid;
+  place-items: center;
+  padding-block: var(--section-y);
+  overflow: hidden;
+  border-block: 1px solid var(--line);
+}
+.quote__bg {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(60% 50% at 50% 50%, rgba(201, 139, 94, 0.08), transparent 70%),
+    repeating-linear-gradient(90deg, transparent 0 calc(100% / 12 - 1px), rgba(232, 220, 196, 0.035) calc(100% / 12 - 1px) calc(100% / 12));
+}
+.quote__text {
+  position: relative;
+  margin: 0;
+  text-align: center;
+  font-size: clamp(2.4rem, 7.5vw, 7rem);
+  line-height: 1.02;
+  max-width: 18ch;
+}
+.quote__text em { color: var(--accent); }
+.quote__text::before {
+  content: '“';
+  display: block;
+  font-family: var(--font-serif);
+  font-size: 0.8em;
+  line-height: 0.6;
+  color: var(--accent);
+  margin-bottom: 0.3em;
+}

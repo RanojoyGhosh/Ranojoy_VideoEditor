@@ -1,0 +1,151 @@
+/* ==========================================================================
+   Shared components: buttons, links, phone frame, tags, status dot, icons
+   ========================================================================== */
+.icon { width: 1.1em; height: 1.1em; flex: none; }
+svg use, .icon, .service__icon, .audience-card__icon, .contact-card__icon, .footer__socials svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Buttons */
+.btn {
+  --btn-bg: transparent;
+  --btn-fg: var(--cream-50);
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  min-height: 48px;
+  padding: 0.8rem 1.5rem;
+  border-radius: 999px;
+  background: var(--btn-bg);
+  color: var(--btn-fg);
+  font-weight: 500;
+  font-size: 0.95rem;
+  line-height: 1;
+  white-space: nowrap;
+  transition: background-color 0.4s var(--ease-out), color 0.4s var(--ease-out), border-color 0.4s var(--ease-out);
+  will-change: transform;
+}
+.btn--lg { min-height: 56px; padding: 1rem 1.9rem; font-size: 1rem; }
+.btn--pill { min-height: 44px; padding: 0.65rem 1.25rem; font-size: 0.9rem; }
+.btn--accent { --btn-bg: var(--accent); --btn-fg: var(--on-accent); }
+.btn--accent:hover { --btn-bg: var(--accent-hover); }
+.btn--ghost { border: 1px solid var(--line-strong); }
+.btn--ghost:hover { border-color: var(--sand-200); }
+.btn__arrow { transition: transform 0.5s var(--ease-out); }
+.btn--ghost:hover .btn__arrow { transform: translateY(3px); }
+
+/* Text-roll hover: label slides up, duplicate slides in from below */
+.roll { position: relative; display: inline-block; overflow: hidden; vertical-align: top; line-height: 1.2; }
+.roll__a, .roll__b { display: block; transition: transform 0.55s var(--ease-out); }
+.roll__b { position: absolute; inset: 0; transform: translateY(105%); }
+@media (hover: hover) {
+  a:hover > .roll .roll__a, button:hover > .roll .roll__a { transform: translateY(-105%); }
+  a:hover > .roll .roll__b, button:hover > .roll .roll__b { transform: translateY(0); }
+}
+
+/* Underline that draws left → right */
+.link-underline {
+  background-image: linear-gradient(currentColor, currentColor);
+  background-size: 0% 1px;
+  background-position: 0 100%;
+  background-repeat: no-repeat;
+  padding-bottom: 2px;
+  transition: background-size 0.5s var(--ease-out);
+}
+a:hover .link-underline, a.link-underline:hover, a:focus-visible .link-underline { background-size: 100% 1px; }
+
+.link-arrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-height: 44px;
+  font-weight: 500;
+  color: var(--sand-200);
+}
+.link-arrow .icon { color: var(--accent); transition: transform 0.5s var(--ease-out); }
+.link-arrow:hover .icon { transform: translateX(5px); }
+
+/* Phone frame (9:16) */
+.phone {
+  position: relative;
+  display: block;
+  aspect-ratio: 9 / 16;
+  padding: clamp(4px, 0.5vw, 7px);
+  border-radius: clamp(20px, 2.4vw, 34px);
+  background: linear-gradient(160deg, #1d2a24, #08130e 60%);
+  border: 1px solid var(--line-strong);
+  box-shadow: 0 30px 60px -25px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(0, 0, 0, 0.4);
+}
+.phone__screen {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: calc(clamp(20px, 2.4vw, 34px) - clamp(4px, 0.5vw, 7px));
+  background: var(--bg-700);
+  isolation: isolate;
+}
+.phone__screen video,
+.phone__screen img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.phone::after { /* tiny speaker notch */
+  content: '';
+  position: absolute;
+  top: clamp(10px, 1.1vw, 14px);
+  left: 50%;
+  width: 22%;
+  height: 4px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.55);
+  transform: translateX(-50%);
+  z-index: 2;
+}
+
+/* Tags */
+.tag {
+  display: inline-block;
+  padding: 0.3rem 0.7rem;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  font-size: var(--fs-xs);
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+/* Availability status */
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: var(--fs-small);
+  color: var(--muted);
+}
+.status__dot {
+  position: relative;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #6FCF97;
+}
+.status__dot::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: inherit;
+  animation: pulse 2.4s var(--ease-out) infinite;
+}
+@keyframes pulse {
+  0% { transform: scale(1); opacity: 0.6; }
+  80%, 100% { transform: scale(2.8); opacity: 0; }
+}

@@ -1,0 +1,46 @@
+/* ==========================================================================
+   Preloader: RG monogram draws in, counter 0 → 100, curtain wipes up
+   ========================================================================== */
+.preloader {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: none;
+  pointer-events: none;
+}
+.is-preloading .preloader { display: block; pointer-events: auto; }
+.is-preloading body { overflow: hidden; }
+
+.preloader__curtain {
+  position: absolute;
+  inset: 0;
+  background: var(--bg-900);
+  z-index: 0;
+}
+.preloader__inner {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 1.25rem;
+}
+.preloader__mark { width: clamp(110px, 14vw, 160px); overflow: visible; }
+.preloader__mark text {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 64px;
+  letter-spacing: -0.04em;
+  fill: transparent;
+  stroke: var(--sand-200);
+  stroke-width: 1;
+  stroke-dasharray: 260;
+  stroke-dashoffset: 260;
+}
+.preloader__count {
+  font-size: var(--fs-xs);
+  letter-spacing: 0.2em;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
