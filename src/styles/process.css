@@ -1,0 +1,43 @@
+/* ==========================================================================
+   Process timeline: line draws itself with scroll
+   ========================================================================== */
+.process__inner { display: grid; gap: clamp(3rem, 6vw, 5rem); }
+.process__cta { margin-top: 2rem; }
+.timeline { position: relative; padding-left: 2.75rem; }
+.timeline__line {
+  position: absolute;
+  left: 7px;
+  top: 0.6rem;
+  bottom: 0.6rem;
+  width: 1px;
+  background: var(--line-strong);
+}
+.timeline__progress {
+  position: absolute;
+  inset: 0;
+  background: var(--accent);
+  transform-origin: top;
+  transform: scaleY(1);
+}
+.timeline__list { display: grid; gap: clamp(2.5rem, 5vw, 4rem); }
+.timeline__step { position: relative; }
+.timeline__dot {
+  position: absolute;
+  left: calc(-2.75rem + 2px);
+  top: 0.45rem;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--bg-900);
+  border: 1px solid var(--accent);
+  transition: background-color 0.5s, transform 0.5s var(--ease-out);
+}
+.timeline__step.is-active .timeline__dot { background: var(--accent); transform: scale(1.15); }
+.timeline__num { font-family: var(--font-serif); font-style: italic; font-size: 1.2rem; color: var(--accent); }
+.timeline__step h3 { margin-top: 0.35rem; font-family: var(--font-display); font-weight: 600; font-size: clamp(1.75rem, 3.2vw, 2.75rem); letter-spacing: -0.03em; color: var(--sand-200); line-height: 1.05; }
+.timeline__step p { margin-top: 0.75rem; max-width: 46ch; color: var(--muted); }
+
+@media (min-width: 1024px) {
+  .process__inner { grid-template-columns: 1fr 1fr; align-items: start; }
+  .process__head { position: sticky; top: calc(var(--nav-h) + 3rem); margin-bottom: 0; }
+}

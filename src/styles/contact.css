@@ -1,0 +1,116 @@
+/* ==========================================================================
+   Get in touch: WhatsApp form + direct contact cards
+   ========================================================================== */
+.contact__grid { display: grid; gap: clamp(3rem, 6vw, 5rem); }
+
+.form { display: grid; gap: 1.25rem; }
+.form__row { display: grid; gap: 1.25rem; }
+@media (min-width: 640px) { .form__row { grid-template-columns: 1fr 1fr; } }
+
+.field { display: grid; gap: 0.5rem; align-content: start; }
+.field label { font-size: var(--fs-small); font-weight: 500; color: var(--sand-200); }
+.req { color: var(--accent); }
+.opt { color: var(--muted); font-weight: 400; }
+
+.field input,
+.field select,
+.field textarea {
+  width: 100%;
+  min-height: 52px;
+  padding: 0.85rem 1rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line-strong);
+  background: rgba(11, 31, 23, 0.55);
+  color: var(--cream-50);
+  font-size: 1rem; /* 16px stops iOS zoom on focus */
+  transition: border-color 0.3s, background-color 0.3s, box-shadow 0.3s;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.field textarea { resize: vertical; min-height: 140px; line-height: 1.5; }
+.field ::placeholder { color: rgba(168, 179, 172, 0.7); }
+.field input:hover, .field select:hover, .field textarea:hover { border-color: rgba(232, 220, 196, 0.35); }
+.field input:focus, .field select:focus, .field textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: rgba(11, 31, 23, 0.85);
+  box-shadow: 0 0 0 3px rgba(201, 139, 94, 0.18);
+}
+.field.has-error input, .field.has-error select, .field.has-error textarea { border-color: var(--error); }
+.field__error { min-height: 0; font-size: var(--fs-small); color: var(--error); }
+.field__error:empty { display: none; }
+
+.select { position: relative; }
+.select::after {
+  content: '';
+  position: absolute;
+  right: 1.1rem;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  border-right: 1.5px solid var(--muted);
+  border-bottom: 1.5px solid var(--muted);
+  transform: translateY(-70%) rotate(45deg);
+  pointer-events: none;
+}
+.select select { padding-right: 2.5rem; cursor: pointer; }
+.select option { background: var(--bg-800); color: var(--cream-50); }
+
+.hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+
+.form__foot { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem 1.5rem; margin-top: 0.5rem; }
+.form__submit .icon { width: 1.25em; height: 1.25em; }
+.form__submit[aria-busy='true'] { opacity: 0.8; pointer-events: none; }
+.form__note { font-size: var(--fs-small); color: var(--muted); max-width: 34ch; }
+.form__status { font-size: 0.95rem; color: var(--sand-200); }
+.form__status:empty { display: none; }
+.form__status.is-success {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 1rem 1.25rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(111, 207, 151, 0.35);
+  background: rgba(111, 207, 151, 0.08);
+}
+.form__status a { text-decoration: underline; text-underline-offset: 3px; }
+
+/* Aside */
+.contact__person { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; }
+.contact__person img { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; filter: grayscale(1); border: 1px solid var(--line-strong); }
+.contact__person-name { font-family: var(--font-display); font-weight: 600; font-size: 1.2rem; color: var(--sand-200); }
+.contact__list { display: grid; gap: 0.6rem; }
+.contact-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-height: 68px;
+  padding: 0.9rem 1.1rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  background: var(--bg-900);
+  transition: border-color 0.4s, background-color 0.4s, transform 0.5s var(--ease-out);
+}
+.contact-card__icon {
+  width: 42px;
+  height: 42px;
+  padding: 10px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--bg-700);
+  color: var(--sand-200);
+  transition: color 0.4s, background-color 0.4s;
+}
+.contact-card--wa .contact-card__icon { color: var(--whatsapp); }
+.contact-card__body { display: grid; min-width: 0; }
+.contact-card__label { font-size: var(--fs-xs); letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+.contact-card__value { color: var(--cream-50); overflow-wrap: anywhere; }
+.contact-card__arrow { margin-left: auto; color: var(--muted); transition: transform 0.5s var(--ease-out), color 0.4s; }
+@media (hover: hover) {
+  .contact-card:hover { border-color: var(--line-strong); background: var(--bg-700); }
+  .contact-card:hover .contact-card__arrow { transform: translate(3px, -3px); color: var(--accent); }
+}
+
+@media (min-width: 1024px) {
+  .contact__grid { grid-template-columns: 1.35fr 1fr; align-items: start; }
+}
