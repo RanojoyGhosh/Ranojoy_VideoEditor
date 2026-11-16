@@ -1,16 +1,21 @@
 /**
  * AES-256-GCM encryption for the Instagram access token at rest.
  * Format: "v1:<iv>:<tag>:<ciphertext>" (each part base64url).
- * Key: TOKEN_ENCRYPTION_KEY = 32 random bytes, base64 (generate with `npm run gen-key`).
+ * Key: TOKEN_ENCRYPTION_KEY = either 32 random bytes in base64 (`npm run gen-key`)
+ * or any random text of 32+ characters (e.g. from a password generator), which
+ * is turned into a 32-byte key with SHA-256.
+ * Changing the key later means reconnecting Instagram (the old token can't be read).
  */
-import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
+import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
 
-function keyFrom(b64: string): Buffer {
-  const key = Buffer.from(b64, "base64");
-  if (key.length !== 32) {
-    throw new Error("TOKEN_ENCRYPTION_KEY must be 32 bytes, base64-encoded. Run `npm run gen-key`.");
+function keyFrom(secret: string): Buffer {
+  const raw = secret.trim();
+  // Exactly 32 bytes of base64 (what `npm run gen-key` prints).
+  if (/^[A-Za-z0-9+/]{43}=$/.test(raw)) return Buffer.from(raw, "base64");
+  if (raw.length < 32) {
+    throw new Error("TOKEN_ENCRYPTION_KEY must be at least 32 characters of random text.");
   }
-  return key;
+  return createHash("sha256").update(raw, "utf8").digest();
 }
 
 export function encryptSecret(plain: string, keyB64: string): string {

@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { verifyPassword } from "@/lib/auth/password";
+import { checkAdminPassword, MIN_ADMIN_PASSWORD_LENGTH } from "@/lib/auth/password";
 import { createSession, destroySession } from "@/lib/auth/session";
 import { env } from "@/lib/env";
 import { getSettings, setSetting } from "@/lib/settings";
@@ -20,8 +20,11 @@ export async function loginAction(_prev: LoginState, form: FormData): Promise<Lo
     return { error: `Too many wrong attempts. Try again after ${LOCK_MINUTES} minutes.`, email };
   }
 
-  // Always run the (slow) hash check so timing doesn't reveal whether the email matched.
-  const passwordOk = await verifyPassword(password, env.adminPasswordHash);
+  if (!env.adminPasswordHash && (env.adminPassword?.length ?? 0) < MIN_ADMIN_PASSWORD_LENGTH) {
+    return { error: `Set ADMIN_PASSWORD (at least ${MIN_ADMIN_PASSWORD_LENGTH} characters) or ADMIN_PASSWORD_HASH in the environment variables.`, email };
+  }
+  // Always run the password check so timing doesn't reveal whether the email matched.
+  const passwordOk = await checkAdminPassword(password, { hash: env.adminPasswordHash, plain: env.adminPassword });
   if (!passwordOk || email !== env.adminEmail) {
     const fails = (s["auth.failCount"] ?? 0) + 1;
     if (fails >= MAX_FAILURES) {

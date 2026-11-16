@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { hashPassword, verifyPassword } from "@/lib/auth/password";
+import { checkAdminPassword, hashPassword, verifyPassword } from "@/lib/auth/password";
 import { decryptSecret, encryptSecret } from "@/lib/crypto";
 import { parseIgTime } from "@/lib/ingestion/sync";
 
@@ -27,8 +27,14 @@ describe("token encryption", () => {
     expect(() => decryptSecret(blob, randomBytes(32).toString("base64"))).toThrow();
   });
 
-  it("insists on a 32-byte key", () => {
-    expect(() => encryptSecret("x", randomBytes(16).toString("base64"))).toThrow(/32 bytes/);
+  it("insists on a long enough key", () => {
+    expect(() => encryptSecret("x", randomBytes(16).toString("base64"))).toThrow(/at least 32/);
+  });
+
+  it("also accepts any long random text as the key", () => {
+    const textKey = "correct-horse-battery-staple-and-more-words";
+    expect(decryptSecret(encryptSecret("tok", textKey), textKey)).toBe("tok");
+    expect(() => decryptSecret(encryptSecret("tok", textKey), textKey + "x")).toThrow();
   });
 });
 
@@ -38,6 +44,16 @@ describe("admin password", () => {
     expect(hash).not.toContain("$");
     expect(await verifyPassword("correct horse battery staple", hash)).toBe(true);
     expect(await verifyPassword("wrong password!!", hash)).toBe(false);
+  });
+
+  it("checks a plain ADMIN_PASSWORD when no hash is set", async () => {
+    expect(await checkAdminPassword("a-long-password-123", { plain: "a-long-password-123" })).toBe(true);
+    expect(await checkAdminPassword("a-long-password-12", { plain: "a-long-password-123" })).toBe(false);
+    // Too short to be allowed at all.
+    expect(await checkAdminPassword("short", { plain: "short" })).toBe(false);
+    expect(await checkAdminPassword("anything", {})).toBe(false);
+    const hash = await hashPassword("hashed-password-xyz");
+    expect(await checkAdminPassword("hashed-password-xyz", { hash, plain: "ignored-when-hash-set" })).toBe(true);
   });
 
   it("rejects malformed hashes", async () => {

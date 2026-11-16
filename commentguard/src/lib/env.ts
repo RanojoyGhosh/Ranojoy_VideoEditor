@@ -12,8 +12,12 @@ export const env = {
   get adminEmail() {
     return req("ADMIN_EMAIL").trim().toLowerCase();
   },
+  /** One of these two must be set. The hash is preferred. */
   get adminPasswordHash() {
-    return req("ADMIN_PASSWORD_HASH");
+    return process.env.ADMIN_PASSWORD_HASH || undefined;
+  },
+  get adminPassword() {
+    return process.env.ADMIN_PASSWORD || undefined;
   },
   get sessionSecret() {
     const s = req("SESSION_SECRET");

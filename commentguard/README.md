@@ -108,7 +108,7 @@ Other useful commands: `npm run typecheck`, `npm run build`, `npm run tick` (run
 
 ## Meta / Instagram setup (beginner guide)
 
-> **Do "Deploy for free" (below) first.** Meta needs your app's public web address as a redirect URL.
+> **Do "Deploy for free" (below) first, parts A–C.** Meta needs your app's public web address as a redirect URL.
 >
 > New Meta apps (2026) only offer **API setup with Unified login**. The older "API setup with Instagram login" is gone for new apps.
 > Unified login gives a **system-user token that never expires**, so there is nothing to refresh.
@@ -206,26 +206,79 @@ CommentGuard detects the token type and refreshes these 60-day tokens weekly by 
 
 ---
 
-## Deploy for free (Supabase + Vercel)
+## Deploy for free (Supabase + Vercel), no commands needed
 
-1. **Supabase** (https://supabase.com) → New project → region **Mumbai (ap-south-1)** → set a database password.
-2. Supabase → **Connect** → copy the **Transaction pooler** string (port 6543) and put your password in it.
-   Use this as `DATABASE_URL`.
-3. On your computer, run `DATABASE_URL='…' npm run db:migrate` to create the tables.
-   The migrations also turn on row-level security, so Supabase's public API can't read them.
-4. **Vercel** (https://vercel.com) → Add New → Project → import this GitHub repo.
-   - **Root Directory:** `commentguard`
-   - Environment Variables: everything from `.env.example`, with `IG_MOCK=false`.
-   - Deploy.
-5. Supabase → **SQL Editor** → paste [`supabase/cron.sql`](supabase/cron.sql), put in your Vercel URL and `CRON_SECRET`, and run it.
-   The bot now ticks every minute. Vercel's own free cron only runs once a day, so Supabase does the scheduling.
-6. Do the **Meta / Instagram setup** above (it needs this URL).
-   Then open your Vercel URL on your phone, log in, tap **Settings → Connect with Meta**, and tap **Scan now** once.
+Why Vercel and not GitHub Pages? GitHub Pages only serves static files (fine for the portfolio).
+CommentGuard needs a server for the login, the database, the every-minute tick and Meta's login callback.
+Vercel is still connected to GitHub: every push redeploys automatically.
+
+You need four secret values. Make each one with a password generator (e.g. your browser's "suggest strong password", Bitwarden or 1Password):
+**long random text, at least 32 characters, letters and numbers only**. Keep them in a safe note.
+
+| Name | What |
+| --- | --- |
+| `ADMIN_PASSWORD` | Your login password for the panel (at least 12 characters, one you can type on your phone) |
+| `TOKEN_ENCRYPTION_KEY` | Random text, 32+ characters. **Never change it later**, or you'll have to reconnect Instagram. |
+| `SESSION_SECRET` | Random text, 32+ characters |
+| `CRON_SECRET` | Random text, 32+ characters |
+
+### A. Supabase (database)
+
+1. https://supabase.com → sign in with GitHub → **New project**.
+2. Name `commentguard`, choose a **database password** (save it), region **South Asia (Mumbai)** → **Create**.
+3. When it's ready: click **Connect** (top bar) → **Connection string** → **Transaction pooler** → copy it.
+   It looks like `postgresql://postgres.abcd:[YOUR-PASSWORD]@aws-0-ap-south-1.pooler.supabase.com:6543/postgres`.
+4. Replace `[YOUR-PASSWORD]` with your database password. This is your `DATABASE_URL`.
+   Use the **pooler** string (port 6543), not "Direct connection"; Vercel can't reach the direct one.
+
+### B. Vercel (the app)
+
+1. https://vercel.com → sign up with **GitHub** → **Add New…** → **Project** → import **Ranojoy_VideoEditor**.
+2. **Root Directory** → **Edit** → choose `commentguard`. The framework shows "Next.js".
+3. Open **Environment Variables** and add:
+
+   | Key | Value |
+   | --- | --- |
+   | `DATABASE_URL` | from Supabase step 4 |
+   | `ADMIN_EMAIL` | your email |
+   | `ADMIN_PASSWORD` | your panel password |
+   | `TOKEN_ENCRYPTION_KEY` | random text |
+   | `SESSION_SECRET` | random text |
+   | `CRON_SECRET` | random text |
+   | `IG_MOCK` | `true` for now, so you can try the panel with fake data |
+
+4. **Deploy**. The build also creates the database tables automatically; this happens on every deploy, so you never run migrations by hand.
+5. Open the address Vercel gives you (e.g. `https://commentguard-xxxx.vercel.app`), log in, and try **Settings → Connect with Meta**.
+   In mock mode this is a fake login, then tap **Scan now** on Home.
+
+### C. The every-minute clock
+
+Vercel's free plan only runs its own cron once a day, so Supabase calls the app instead:
+
+1. Supabase → **SQL Editor** → **New query**.
+2. Paste [`supabase/cron.sql`](supabase/cron.sql). Replace `https://YOUR-APP.vercel.app` with your address and `YOUR_CRON_SECRET` with your `CRON_SECRET`.
+3. Click **Run**.
+
+Within 2 minutes, Home shows **Watching**.
+
+### D. Switch to your real Instagram
+
+1. Do the **Meta / Instagram setup** above. It needs your Vercel address for the redirect URL.
+2. In Vercel → Project → **Settings** → **Environment Variables**:
+   - add `META_APP_ID`, `META_APP_SECRET`, `META_CONFIG_ID`
+   - add `APP_URL` = your Vercel address
+   - change `IG_MOCK` to `false`
+3. Vercel → **Deployments** → latest → **⋯** → **Redeploy**.
+4. Panel → **Settings** → **Connect with Meta** → then **Scan now** on Home.
+
+Mock data stays in the database until you switch. To start clean, run this in the Supabase SQL Editor:
+`truncate comments, posts, accounts, audit_log cascade;`
 
 Notes on the free plans:
 
 - A Supabase free project pauses after a week **without activity**. The every-minute cron counts as activity.
 - Vercel Hobby is meant for personal, non-commercial use.
+- If you'd rather use a hashed password, run `npm run hash-password -- '…'` locally and set `ADMIN_PASSWORD_HASH` instead of `ADMIN_PASSWORD`.
 
 ---
 

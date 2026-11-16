@@ -4,7 +4,7 @@
  * Deliberately has no "$" characters: Next.js expands "$VAR" inside .env files,
  * which silently breaks bcrypt-style hashes.
  */
-import { randomBytes, scrypt as scryptCb, timingSafeEqual, type ScryptOptions } from "node:crypto";
+import { createHash, randomBytes, scrypt as scryptCb, timingSafeEqual, type ScryptOptions } from "node:crypto";
 
 function scrypt(password: string, salt: Buffer, keylen: number, opts: ScryptOptions): Promise<Buffer> {
   return new Promise((resolve, reject) =>
@@ -36,4 +36,19 @@ export async function verifyPassword(password: string, stored: string): Promise<
     maxmem: MAXMEM,
   });
   return key.length === expected.length && timingSafeEqual(key, expected);
+}
+
+export const MIN_ADMIN_PASSWORD_LENGTH = 12;
+
+/**
+ * Check the admin password. ADMIN_PASSWORD_HASH (from `npm run hash-password`) wins;
+ * otherwise a plain ADMIN_PASSWORD env variable (handy when deploying without Node
+ * installed; Vercel keeps env variables secret). Passwords under 12 characters never pass.
+ */
+export async function checkAdminPassword(input: string, cfg: { hash?: string; plain?: string }): Promise<boolean> {
+  if (cfg.hash) return verifyPassword(input, cfg.hash);
+  if (!cfg.plain || cfg.plain.length < MIN_ADMIN_PASSWORD_LENGTH) return false;
+  const a = createHash("sha256").update(input).digest();
+  const b = createHash("sha256").update(cfg.plain).digest();
+  return timingSafeEqual(a, b);
 }
