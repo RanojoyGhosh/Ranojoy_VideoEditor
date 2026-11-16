@@ -30,6 +30,30 @@ export const env = {
   get igAccessToken() {
     return process.env.IG_ACCESS_TOKEN || undefined;
   },
+  /** Meta app (App settings → Basic). Needed for "Connect with Meta" and token checks. */
+  get metaAppId() {
+    return process.env.META_APP_ID || undefined;
+  },
+  get metaAppSecret() {
+    return process.env.META_APP_SECRET || undefined;
+  },
+  /** Configuration ID from "API setup with Unified login" (Facebook Login for Business). */
+  get metaConfigId() {
+    return process.env.META_CONFIG_ID || undefined;
+  },
+  /** "app-id|app-secret": lets the server inspect tokens (debug_token). */
+  get metaAppToken() {
+    if (this.metaAppId && this.metaAppSecret) return `${this.metaAppId}|${this.metaAppSecret}`;
+    return this.igMock ? "mockapp|mocksecret" : undefined;
+  },
+  /** Optional: which Instagram account to use if a token can manage several. */
+  get igUserIdHint() {
+    return process.env.IG_USER_ID || undefined;
+  },
+  /** Public URL of the app (e.g. https://commentguard.vercel.app); used for the login redirect. */
+  get appUrl() {
+    return process.env.APP_URL?.replace(/\/$/, "") || undefined;
+  },
   get igApiVersion() {
     return process.env.IG_API_VERSION || "v25.0";
   },

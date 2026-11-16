@@ -3,7 +3,7 @@
 Keeps network-marketing spam out of my Instagram comments (@ranojoyghosh_) while I'm in college,
 without ever touching genuine leads.
 
-- **Official API only.** Instagram API with Instagram Login. No passwords, no scraping, no browser automation.
+- **Official API only.** Meta's Instagram API (Unified login, or Instagram Login on older apps). No passwords, no scraping, no browser automation.
 - **My posts only.** It only reads (and later moderates) comments on my own posts and reels.
 - **Free to run.** Next.js on Vercel (Hobby) + Supabase Postgres + Supabase `pg_cron` as the 1-minute clock.
 
@@ -25,7 +25,7 @@ without ever touching genuine leads.
 ```
 pg_cron (every minute) ──POST /api/cron/tick──▶  runTick()
                                                    ├─ connect from IG_ACCESS_TOKEN (first run only)
-                                                   ├─ refresh the token if due (weekly)
+                                                   ├─ refresh the token if due (Instagram Login tokens only; Unified login tokens never expire)
                                                    └─ runIngestion()
                                                         ├─ list my media every 10 min → posts table
                                                         └─ scan the posts that are due, newest first
@@ -56,7 +56,8 @@ src/
     ingestion/         syncMedia, scanPost, scheduler (polling tiers + backfill)
     auth/              scrypt password check, signed session cookie
     db/                Drizzle schema + connection
-    account.ts         connect / decrypt / refresh the token
+    account.ts         connect (Unified login or Instagram Login token) / decrypt / refresh
+    meta-login.ts      "Connect with Meta" redirect helpers (routes in app/api/auth/meta)
     tick.ts            one bot tick (later steps plug detection, actions, notify in here)
     crypto.ts          AES-256-GCM for the token at rest
     settings.ts        typed settings with defaults
@@ -88,7 +89,7 @@ npm run dev
 
 Open http://localhost:3000 and log in.
 
-**Try it before Meta setup:** set `IG_MOCK=true`, then in Settings paste the token `mock-token`.
+**Try it before Meta setup:** set `IG_MOCK=true`, then in Settings tap **Connect with Meta** (a fake login).
 You get 3 fake posts with the spec's test comments (spam replies under leads, Bengali digits, your own CTA reply).
 
 ### Tests
@@ -107,8 +108,11 @@ Other useful commands: `npm run typecheck`, `npm run build`, `npm run tick` (run
 
 ## Meta / Instagram setup (beginner guide)
 
-> Meta renames menus often. These steps match Meta's docs as of late 2026.
-> If a button has a slightly different name, look for the closest match.
+> **Do "Deploy for free" (below) first.** Meta needs your app's public web address as a redirect URL.
+>
+> New Meta apps (2026) only offer **API setup with Unified login**. The older "API setup with Instagram login" is gone for new apps.
+> Unified login gives a **system-user token that never expires**, so there is nothing to refresh.
+> Meta renames menus often; if a button has a slightly different name, look for the closest match.
 
 ### 1. Make sure your Instagram account is Professional
 
@@ -117,60 +121,88 @@ Instagram app → your profile → ☰ menu → **Settings and activity** → **
 - If you see **Switch to personal account**, you are already Professional (Creator or Business). Good.
 - If you see **Switch to professional account**, tap it and choose **Creator**.
 
-You do **not** need a Facebook Page for this API.
+### 2. Create the Meta app
 
-### 2. Create a Meta app with the Instagram product
+1. Go to https://developers.facebook.com and log in with Facebook. Register as a developer if asked.
+2. **My Apps** → **Create app** → name `CommentGuard` → use case **Manage messaging & content on Instagram** → create.
+3. Open **Use cases** → **Manage messaging & content on Instagram** → **Customize** → **API setup with Unified login**.
 
-1. Go to https://developers.facebook.com and log in with Facebook.
-   The first time, register as a developer (verify phone/email).
-2. **My Apps** → **Create app**.
-3. App name: `CommentGuard`. Contact email: yours. → **Next**.
-4. Use case: **Manage messaging & content on Instagram** → **Next**.
-5. Business portfolio: choose **I don't want to connect a business portfolio yet** → **Next** → **Create app**.
-6. In the app dashboard: **Use cases** → **Manage messaging & content on Instagram** → **Customize**.
-   Open **API setup with Instagram login**. Choose this one, not "Facebook login".
+### 3. Create the login configuration
 
-### 3. Permissions
+On **API setup with Unified login** → **1. Configure your app** → **Create new configuration**:
 
-Under the use case's **Permissions and features**, make sure these two are added:
+| Setting | Choose |
+| --- | --- |
+| Name | `CommentGuard` |
+| Login variation | General |
+| Access token | **System-user access token** |
+| Token expiration | **Never** |
+| Assets | **Instagram account** (ad account not needed) |
+| Permissions | **`instagram_basic`** and **`instagram_manage_comments`** |
 
-- `instagram_business_basic`
-- `instagram_business_manage_comments`
+CommentGuard doesn't need the other permissions in the default list (`ads_management`, `ads_read`, `instagram_manage_messages`, `instagram_content_publish`).
+Untick them if Meta lets you; fewer permissions is safer. Save, then copy the **Configuration ID** into `META_CONFIG_ID`.
 
-These are the current names for Instagram Login. The old `business_manage_comments` name was replaced.
+### 4. Add `business_management` to the configuration
 
-### 4. Add yourself as a tester (no App Review needed)
+Developers report that without this permission, system-user tokens can't read the Instagram account's posts (error 100/33).
+The Unified login editor doesn't offer it, so add it through Facebook Login for Business:
 
-1. **App roles** → **Roles** → **Add people** → **Instagram Tester** → type `ranojoyghosh_`.
-2. Accept the invite on Instagram. On the web, go to instagram.com → **Settings** → **Website permissions**
-   → **Apps and websites** → **Tester invites** → **Accept**.
-3. Leave the app in **Development** mode.
+1. Left menu → **Add product** (or **Add more to this use case**) → **Facebook Login for Business** → **Set up**.
+2. **Facebook Login for Business** → **Configurations** → open **CommentGuard** → **Edit** → **Permissions** → add **`business_management`** → save.
 
-Reading, hiding and deleting comments on accounts you own needs only **Standard Access**, so there is no App Review.
+If you skip this and connecting later says *"This token can't see any Instagram account"*, come back to this step.
 
-### 5. Webhooks (Step 4; skip for now)
+### 5. Register the redirect URL
 
-Meta's docs say comment **webhooks** only reach apps in **Live** mode with **Advanced Access** for the comments permission.
-Advanced Access needs App Review. CommentGuard therefore works fully on **polling** (new comments show up within about 2 minutes on the newest posts).
-Webhooks will be added on top in Step 4, if you decide to go Live.
+1. Still on **API setup with Unified login**, under **Redirect URL** → **Register a new redirect URL**, paste
+   `https://YOUR-APP.vercel.app/api/auth/meta/callback` → **Save**.
+2. **Facebook Login for Business** → **Settings** → **Valid OAuth Redirect URIs**: add the same URL → **Save changes**.
 
-### 6. Get a long-lived access token
+### 6. App ID and secret → environment variables
 
-1. **API setup with Instagram login** → **Generate access tokens** → **Add account** → log in to Instagram → allow.
-2. Click **Generate token** next to your account and copy it (starts with `IGAA…`).
-   This token lasts about **60 days**.
-3. Paste it into CommentGuard → **Settings** → **Instagram** → **Connect**, or put it in `.env` as `IG_ACCESS_TOKEN`.
+**App settings** → **Basic** → copy **App ID** and **App secret** (click **Show**).
+In Vercel → Project → Settings → Environment Variables, set:
 
-Treat this token like a password. Don't share it or put it in screenshots.
+- `META_APP_ID`
+- `META_APP_SECRET`
+- `META_CONFIG_ID`
+- `APP_URL` = `https://YOUR-APP.vercel.app`
 
-### 7. How token refresh works
+Then redeploy (Deployments → ⋯ → Redeploy).
 
-- CommentGuard refreshes the token automatically once a week, which gives a new 60-day token each time.
-  Instagram only allows a refresh once the token is at least 24 hours old, so the first refresh happens a day after connecting.
-  Until then, Settings shows the expiry as "estimated".
-- **If it ever breaks** (you changed your Instagram password, removed the app, or the app was idle for 60+ days):
-  the Home page shows a red "Instagram problem" card.
-  Repeat step 6 and paste the new token in **Settings → Reconnect**. Your data stays.
+Keep the app in **Development** mode. You are the app's admin and you manage your own Instagram account, so **no App Review** is needed.
+
+### 7. Connect
+
+Open CommentGuard → **Settings** → **Connect with Meta**:
+
+1. Log in with Facebook.
+2. Pick (or create) a **business portfolio**. It's free and only needs a name.
+3. Choose your Instagram account **@ranojoyghosh_**. If asked, log in to Instagram to link it.
+4. Allow the permissions.
+
+You land back in Settings, which should show:
+
+- **Login type:** Unified login
+- **Token expires:** Never
+- the permissions list, including `instagram_manage_comments`
+
+Now go to Home → **Scan now**.
+
+**If it breaks:** for example, you removed the Instagram account from the business portfolio or reset the app secret.
+Home shows a red "Instagram problem" card. Tap **Reconnect with Meta** in Settings. Your data stays.
+
+### Webhooks (Step 4)
+
+Developers report that in Development mode, comment webhooks only fire for people who have a role on the app, not for random commenters.
+Spammers don't have a role, so CommentGuard relies on **polling**: new comments show up within about 2 minutes on your newest posts.
+Webhooks would need the app to go Live and pass App Review, which is optional for later.
+
+### Older apps: Instagram Login tokens
+
+If you have an older app that still shows **API setup with Instagram login**, you can paste its `IGAA…` token in Settings instead.
+CommentGuard detects the token type and refreshes these 60-day tokens weekly by itself.
 
 ---
 
@@ -187,7 +219,8 @@ Treat this token like a password. Don't share it or put it in screenshots.
    - Deploy.
 5. Supabase → **SQL Editor** → paste [`supabase/cron.sql`](supabase/cron.sql), put in your Vercel URL and `CRON_SECRET`, and run it.
    The bot now ticks every minute. Vercel's own free cron only runs once a day, so Supabase does the scheduling.
-6. Open your Vercel URL on your phone, log in, connect Instagram, and tap **Scan now** once.
+6. Do the **Meta / Instagram setup** above (it needs this URL).
+   Then open your Vercel URL on your phone, log in, tap **Settings → Connect with Meta**, and tap **Scan now** once.
 
 Notes on the free plans:
 
@@ -206,5 +239,5 @@ Notes on the free plans:
   - A reply shows the comment it answers, so you can see when someone hijacks a lead.
 - **Posts:** your posts and reels, how many comments are stored, and when each was last and will next be scanned.
   Tap a post to see its comments as threads.
-- **Settings:** connect or reconnect Instagram, see when the token expires, change how often posts are scanned, and log out.
+- **Settings:** connect or reconnect Instagram (**Connect with Meta**), see the token's permissions and expiry, change how often posts are scanned, and log out.
   - Five wrong passwords lock the login for 15 minutes.

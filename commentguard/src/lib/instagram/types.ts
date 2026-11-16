@@ -63,3 +63,16 @@ export interface IgErrorBody {
     fbtrace_id?: string;
   };
 }
+
+export interface IgDebugToken {
+  data: {
+    app_id?: string;
+    type?: string; // USER | SYSTEM_USER | PAGE | ...
+    is_valid?: boolean;
+    /** Unix seconds; 0 = never expires. */
+    expires_at?: number;
+    data_access_expires_at?: number;
+    scopes?: string[];
+    user_id?: string;
+  };
+}

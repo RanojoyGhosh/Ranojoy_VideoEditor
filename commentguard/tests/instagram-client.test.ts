@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { InstagramClient } from "@/lib/instagram/client";
+import { exchangeLoginCode, guessFlavor, InstagramClient } from "@/lib/instagram/client";
 import { classify, InstagramApiError } from "@/lib/instagram/errors";
-import { buildMockWorld, createMockFetch, MOCK_TOKEN, type MockFetchOptions } from "@/lib/instagram/mock";
+import { buildMockWorld, createMockFetch, MOCK_FB_TOKEN, MOCK_LOGIN_CODE, MOCK_TOKEN, type MockFetchOptions } from "@/lib/instagram/mock";
 
 function client(opts: MockFetchOptions = {}, token = MOCK_TOKEN, world = buildMockWorld()) {
   return {
@@ -91,5 +91,71 @@ describe("error classification", () => {
     [400, 100, undefined, "other"],
   ] as const)("HTTP %s code %s/%s → %s", (status, code, sub, kind) => {
     expect(classify(status, code, sub)).toBe(kind);
+  });
+});
+
+describe("Unified login (graph.facebook.com, system-user token)", () => {
+  const fbClient = (igUserId?: string) => {
+    const world = buildMockWorld();
+    return {
+      world,
+      ig: new InstagramClient({ accessToken: MOCK_FB_TOKEN, flavor: "facebook", igUserId, apiVersion: "v25.0", fetch: createMockFetch(world, { pageSize: 2 }), sleep: async () => {} }),
+    };
+  };
+
+  it("guesses the token type from its prefix", () => {
+    expect(guessFlavor("EAAGm0PX4ZCps…")).toBe("facebook");
+    expect(guessFlavor("IGAAJ…")).toBe("instagram");
+  });
+
+  it("uses graph.facebook.com by default", async () => {
+    const seen: string[] = [];
+    const world = buildMockWorld();
+    const ig = new InstagramClient({ accessToken: MOCK_FB_TOKEN, flavor: "facebook", apiVersion: "v25.0", fetch: createMockFetch(world, { intercept: (u) => (seen.push(u.origin + u.pathname), undefined) }) });
+    await ig.findInstagramAccounts();
+    expect(seen[0]).toBe("https://graph.facebook.com/v25.0/me/assigned_instagram_accounts");
+  });
+
+  it("finds the assigned Instagram account and reads it by ID", async () => {
+    const { ig, world } = fbClient();
+    const accounts = await ig.findInstagramAccounts();
+    expect(accounts).toEqual([{ id: world.me.user_id, username: "ranojoyghosh_" }]);
+    ig.igUserId = accounts[0].id;
+    const me = await ig.me();
+    expect(me.user_id).toBe(world.me.user_id);
+    expect(me.username).toBe("ranojoyghosh_");
+  });
+
+  it("needs the Instagram account ID before listing media", async () => {
+    const { ig } = fbClient();
+    await expect(ig.listMedia().next()).rejects.toThrow(/account ID/);
+  });
+
+  it("lists media and comments through /{ig-user-id}", async () => {
+    const { ig, world } = fbClient(buildMockWorld().me.user_id);
+    const media = [];
+    for await (const m of ig.listMedia()) media.push(m);
+    expect(media).toHaveLength(3);
+    expect(await ig.listAllComments(world.posts[0].id)).toHaveLength(totalComments(world, 0));
+  });
+
+  it("reads expiry and permissions with debug_token", async () => {
+    const { ig } = fbClient();
+    const info = await ig.debugToken("app|secret");
+    expect(info.type).toBe("SYSTEM_USER");
+    expect(info.expires_at).toBe(0);
+    expect(info.scopes).toContain("instagram_manage_comments");
+  });
+
+  it("exchanges the login code for a token", async () => {
+    const fetch = createMockFetch(buildMockWorld());
+    const opts = { redirectUri: "https://x.test/api/auth/meta/callback", appId: "app", appSecret: "secret", apiVersion: "v25.0", fetch };
+    expect(await exchangeLoginCode({ ...opts, code: MOCK_LOGIN_CODE })).toBe(MOCK_FB_TOKEN);
+    await expect(exchangeLoginCode({ ...opts, code: "used" })).rejects.toBeInstanceOf(InstagramApiError);
+  });
+
+  it("refuses to refresh a system-user token", async () => {
+    const { ig } = fbClient();
+    await expect(ig.refreshToken()).rejects.toThrow();
   });
 });

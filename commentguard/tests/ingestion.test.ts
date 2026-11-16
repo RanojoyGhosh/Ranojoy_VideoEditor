@@ -3,11 +3,11 @@
  */
 import { and, eq, isNotNull, isNull, sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
-import { connectWithToken, getAccount, getAccessToken, maybeRefreshToken } from "@/lib/account";
+import { clientFor, connectWithToken, getAccount, getAccessToken, maybeRefreshToken } from "@/lib/account";
 import { db } from "@/lib/db";
 import { accounts, comments, posts } from "@/lib/db/schema";
 import { InstagramClient } from "@/lib/instagram/client";
-import { buildMockWorld, createMockFetch, MOCK_TOKEN, sharedMockWorld, type MockFetchOptions } from "@/lib/instagram/mock";
+import { buildMockWorld, createMockFetch, MOCK_FB_TOKEN, MOCK_TOKEN, sharedMockWorld, type MockFetchOptions } from "@/lib/instagram/mock";
 import { runIngestion } from "@/lib/ingestion/scheduler";
 import { getSetting, setSetting, tryAcquireLease } from "@/lib/settings";
 import { runTick } from "@/lib/tick";
@@ -34,6 +34,23 @@ describe.skipIf(!hasDb)("ingestion", () => {
     expect(acc.accessTokenEnc).not.toContain(MOCK_TOKEN);
     expect(getAccessToken(acc)).toBe(MOCK_TOKEN);
     expect(acc.tokenExpiresAt!.getTime()).toBeGreaterThan(Date.now() + 50 * 86_400_000);
+  });
+
+  it("connects a Unified login system-user token (never expires, no refresh)", async () => {
+    const acc = await connectWithToken(MOCK_FB_TOKEN);
+    expect(acc.apiFlavor).toBe("facebook");
+    expect(acc.igUserId).toBe(sharedMockWorld().me.user_id);
+    expect(acc.username).toBe("ranojoyghosh_");
+    expect(acc.tokenExpiresAt).toBeNull();
+    expect(acc.tokenExpiryEstimated).toBe(false);
+    expect(acc.tokenScopes).toContain("instagram_manage_comments");
+    expect(await maybeRefreshToken(acc)).toBeNull();
+
+    const r = await runIngestion({ client: clientFor(acc), account: acc, deadline: FAR });
+    expect(r.errors).toEqual([]);
+    expect(r.commentsNew).toBe(worldTotal());
+    // My own comments are recognised by the Instagram account ID here too.
+    expect(await count(eq(comments.isOwn, true))).toBe(2);
   });
 
   it("rejects a bad token without saving anything", async () => {

@@ -1,13 +1,18 @@
 /**
  * The connected Instagram account: connect/reconnect with a token, decrypt the
- * token for API calls, and refresh it before it expires (~60 days).
+ * token for API calls, and keep it valid.
+ *
+ * Two kinds of token are supported (see lib/instagram/client.ts):
+ *  - Unified login system-user token ("EAA…", graph.facebook.com): usually never
+ *    expires, nothing to refresh. This is what new Meta apps get.
+ *  - Instagram Login token ("IG…", graph.instagram.com): 60 days, refreshed weekly.
  */
 import { eq, ne } from "drizzle-orm";
 import { decryptSecret, encryptSecret } from "@/lib/crypto";
 import { db } from "@/lib/db";
 import { accounts, auditLog, type Account } from "@/lib/db/schema";
 import { env } from "@/lib/env";
-import { InstagramApiError, makeInstagramClient, type InstagramClient } from "@/lib/instagram";
+import { guessFlavor, InstagramApiError, makeInstagramClient, type ApiFlavor, type InstagramClient } from "@/lib/instagram";
 
 const DAY = 24 * 60 * 60 * 1000;
 /** Refresh weekly; a refreshed token lasts ~60 days, so there is lots of slack. */
@@ -27,7 +32,7 @@ export function getAccessToken(account: Account): string {
 }
 
 export function clientFor(account: Account): InstagramClient {
-  return makeInstagramClient(getAccessToken(account));
+  return makeInstagramClient(getAccessToken(account), { flavor: account.apiFlavor, igUserId: account.igUserId });
 }
 
 /** True if this comment was written by my own account (never touched). */
@@ -41,14 +46,62 @@ export function isOwnComment(
   return name !== "" && name === account.username.toLowerCase();
 }
 
+/** Pick the Instagram account a Facebook-side token should manage. */
+async function resolveInstagramAccount(client: InstagramClient): Promise<string> {
+  const hint = env.igUserIdHint;
+  const found = await client.findInstagramAccounts();
+  if (hint && (found.length === 0 || found.some((a) => a.id === hint))) return hint;
+  if (found.length === 1) return found[0].id;
+  if (found.length === 0) {
+    throw new Error(
+      "This token can't see any Instagram account. In the Meta dashboard, make sure the login configuration includes your Instagram account and the business_management permission (README → Meta setup), then connect again. Or set IG_USER_ID.",
+    );
+  }
+  throw new Error(
+    `This token can manage several Instagram accounts (${found.map((a) => `@${a.username ?? a.id}`).join(", ")}). Set IG_USER_ID to the one CommentGuard should guard.`,
+  );
+}
+
 /**
- * Validate a long-lived token with GET /me and save it (encrypted).
- * Used on first run (IG_ACCESS_TOKEN in .env) and from Settings → Reconnect.
+ * Validate a token, find the Instagram account and save it (encrypted).
+ * Used by "Connect with Meta", Settings → paste token, and IG_ACCESS_TOKEN on first run.
  */
-export async function connectWithToken(rawToken: string, by: "me" | "system" = "me"): Promise<Account> {
+export async function connectWithToken(rawToken: string, by: "me" | "system" = "me", flavorHint?: ApiFlavor): Promise<Account> {
   const token = rawToken.trim();
   if (!token) throw new Error("Paste an access token first.");
-  const client = makeInstagramClient(token);
+  const flavor = flavorHint ?? guessFlavor(token);
+
+  let finalToken = token;
+  let expiresAt: Date | null = new Date(Date.now() + 60 * DAY);
+  let estimated = true;
+  let refreshedAt: Date | null = null;
+  let scopes: string[] | null = null;
+  let client = makeInstagramClient(token, { flavor });
+
+  if (flavor === "facebook") {
+    // Ask Meta what this token is: expiry (0 = never) and permissions.
+    if (env.metaAppToken) {
+      try {
+        const info = await client.debugToken(env.metaAppToken);
+        if (info.is_valid === false) throw new Error("Meta says this token is not valid. Generate or log in again.");
+        scopes = info.scopes ?? null;
+        expiresAt = info.expires_at ? new Date(info.expires_at * 1000) : null;
+        estimated = false;
+      } catch (err) {
+        if (!(err instanceof InstagramApiError)) throw err;
+        // Can't inspect (e.g. wrong app secret): carry on, expiry unknown.
+        expiresAt = null;
+      }
+    } else {
+      expiresAt = null;
+    }
+    if (scopes && !scopes.includes("instagram_manage_comments")) {
+      throw new Error("This token is missing the instagram_manage_comments permission. Add it to the login configuration and connect again.");
+    }
+    const igUserId = await resolveInstagramAccount(client);
+    client = makeInstagramClient(token, { flavor, igUserId });
+  }
+
   const me = await client.me();
   const igUserId = me.user_id ?? me.id;
 
@@ -59,19 +112,17 @@ export async function connectWithToken(rawToken: string, by: "me" | "system" = "
     );
   }
 
-  // Try a refresh straight away: if the token is old enough, Instagram tells us the exact expiry.
-  let finalToken = token;
-  let expiresAt = new Date(Date.now() + 60 * DAY);
-  let estimated = true;
-  let refreshedAt: Date | null = null;
-  try {
-    const r = await client.refreshToken();
-    finalToken = r.access_token;
-    expiresAt = new Date(Date.now() + r.expires_in * 1000);
-    estimated = false;
-    refreshedAt = new Date();
-  } catch {
-    // Normal for a token generated less than 24h ago. We'll refresh later.
+  if (flavor === "instagram") {
+    // Try a refresh straight away: if the token is old enough, Instagram tells us the exact expiry.
+    try {
+      const r = await client.refreshToken();
+      finalToken = r.access_token;
+      expiresAt = new Date(Date.now() + r.expires_in * 1000);
+      estimated = false;
+      refreshedAt = new Date();
+    } catch {
+      // Normal for a token generated less than 24h ago. We'll refresh later.
+    }
   }
 
   const values = {
@@ -79,6 +130,8 @@ export async function connectWithToken(rawToken: string, by: "me" | "system" = "
     igScopedId: me.id,
     username: me.username,
     accountType: me.account_type ?? null,
+    apiFlavor: flavor,
+    tokenScopes: scopes,
     accessTokenEnc: encryptSecret(finalToken, env.tokenEncryptionKey),
     tokenExpiresAt: expiresAt,
     tokenExpiryEstimated: estimated,
@@ -92,7 +145,7 @@ export async function connectWithToken(rawToken: string, by: "me" | "system" = "
     .values(values)
     .onConflictDoUpdate({ target: accounts.igUserId, set: values })
     .returning();
-  await db.insert(auditLog).values({ action: "account_connected", detail: `@${me.username}`, by });
+  await db.insert(auditLog).values({ action: "account_connected", detail: `@${me.username} (${flavor === "facebook" ? "Unified login" : "Instagram Login"})`, by });
   return account;
 }
 
@@ -115,6 +168,8 @@ export async function recordAccountError(account: Account, message: string) {
  * Telegram alerts for "token expiring within 7 days" arrive in Step 4.
  */
 export async function maybeRefreshToken(account: Account, now = new Date()): Promise<string | null> {
+  // System-user tokens can't be refreshed (and usually never expire).
+  if (account.apiFlavor !== "instagram") return null;
   const t = now.getTime();
   if (account.lastErrorAt && t - account.lastErrorAt.getTime() < RETRY_AFTER_MS && account.lastError?.startsWith("Token refresh")) {
     return null;

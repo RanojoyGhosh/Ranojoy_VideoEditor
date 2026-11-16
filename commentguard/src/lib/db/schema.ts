@@ -28,6 +28,15 @@ export const accounts = pgTable("accounts", {
   igScopedId: text("ig_scoped_id"),
   username: text("username").notNull(),
   accountType: text("account_type"),
+  /**
+   * Which Meta API the token belongs to:
+   *  - "facebook":  Unified login / Facebook Login for Business → graph.facebook.com,
+   *                 system-user token (usually never expires). Default for new Meta apps.
+   *  - "instagram": Instagram API with Instagram Login → graph.instagram.com, 60-day token.
+   */
+  apiFlavor: text("api_flavor").$type<"facebook" | "instagram">().notNull().default("instagram"),
+  /** Permissions the token has (from debug_token), shown in Settings. */
+  tokenScopes: jsonb("token_scopes").$type<string[]>(),
   /** Long-lived access token, AES-256-GCM encrypted (see lib/crypto.ts). */
   accessTokenEnc: text("access_token_enc").notNull(),
   tokenExpiresAt: ts("token_expires_at"),

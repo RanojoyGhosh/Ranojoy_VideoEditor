@@ -6,7 +6,12 @@
 import type { FetchLike } from "./client";
 import type { IgComment, IgMedia, IgMe } from "./types";
 
+/** Instagram Login style token (graph.instagram.com, /me = the Instagram account). */
 export const MOCK_TOKEN = "mock-token";
+/** Unified login style system-user token (graph.facebook.com, /{ig-user-id}). */
+export const MOCK_FB_TOKEN = "EAAmock-token";
+/** The mock login dialog "returns" this code; exchanging it gives MOCK_FB_TOKEN. */
+export const MOCK_LOGIN_CODE = "mock-code";
 
 interface MockComment extends Omit<IgComment, "replies"> {
   replies?: MockComment[];
@@ -142,16 +147,47 @@ export function createMockFetch(world: MockWorld, opts: MockFetchOptions = {}): 
     const url = new URL(input);
     const hijack = opts.intercept?.(url);
     if (hijack) return hijack;
-    if (url.searchParams.get("access_token") !== MOCK_TOKEN) {
+    const parts = url.pathname.split("/").filter(Boolean).filter((p) => !/^v\d+\.\d+$/.test(p));
+    const path = parts.join("/");
+
+    if (path === "oauth/access_token") {
+      return url.searchParams.get("code") === MOCK_LOGIN_CODE
+        ? json({ access_token: MOCK_FB_TOKEN, token_type: "bearer" })
+        : graphError(400, 100, "This authorization code has expired or been used.", 36009);
+    }
+    if (path === "debug_token") {
+      if (!url.searchParams.get("access_token")?.includes("|")) return graphError(400, 190, "Invalid app access token");
+      const input = url.searchParams.get("input_token");
+      return json({
+        data: {
+          app_id: "1234",
+          type: input === MOCK_FB_TOKEN ? "SYSTEM_USER" : "USER",
+          is_valid: input === MOCK_FB_TOKEN || input === MOCK_TOKEN,
+          expires_at: input === MOCK_FB_TOKEN ? 0 : Math.floor(Date.now() / 1000) + 5_000_000,
+          scopes: ["instagram_basic", "instagram_manage_comments", "business_management"],
+        },
+      });
+    }
+
+    const token = url.searchParams.get("access_token");
+    const fb = token === MOCK_FB_TOKEN;
+    if (token !== MOCK_TOKEN && !fb) {
       return graphError(400, 190, "Invalid OAuth access token - Cannot parse access token");
     }
-    const parts = url.pathname.split("/").filter(Boolean).filter((p) => !/^v\d+\.\d+$/.test(p));
+    const igId = world.me.user_id!;
 
-    if (parts[0] === "refresh_access_token") {
+    if (path === "refresh_access_token" && !fb) {
       return json({ access_token: MOCK_TOKEN, token_type: "bearer", expires_in: 60 * 60 * 24 * 60 });
     }
-    if (parts[0] === "me" && parts.length === 1) return json(world.me);
-    if (parts[0] === "me" && parts[1] === "media") {
+    if (path === "me") return json(fb ? { id: "61500000000001", name: "CommentGuard system user" } : world.me);
+    if (path === "me/assigned_instagram_accounts" && fb) {
+      return json({ data: [{ id: igId, username: world.me.username }] });
+    }
+    if (path === igId && fb) {
+      const { user_id: _u, account_type: _a, ...rest } = world.me;
+      return json({ ...rest, id: igId });
+    }
+    if ((path === "me/media" && !fb) || (path === `${igId}/media` && fb)) {
       const sorted = [...world.posts].sort((a, b) => b.timestamp.localeCompare(a.timestamp));
       return json(page(url, sorted, size, ({ comments: _c, ...m }) => m));
     }

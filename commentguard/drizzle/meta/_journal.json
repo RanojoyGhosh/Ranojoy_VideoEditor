@@ -15,6 +15,13 @@
       "when": 1794822394545,
       "tag": "0001_enable_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794823693381,
+      "tag": "0002_unified_login",
+      "breakpoints": true
     }
   ]
 }
