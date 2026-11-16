@@ -1,0 +1,30 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", "Noto Sans Bengali", ui-sans-serif, system-ui, sans-serif;
+  --color-brand-400: oklch(0.79 0.15 163);
+  --color-brand-500: oklch(0.70 0.15 163);
+  --color-brand-600: oklch(0.60 0.13 163);
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  background: var(--color-zinc-950);
+  color: var(--color-zinc-100);
+}
+
+body {
+  -webkit-tap-highlight-color: transparent;
+  /* Bengali conjuncts need a little extra line height to not clip. */
+  line-height: 1.55;
+}
+
+/* Comment text can contain long numbers / links with no spaces. */
+.comment-text {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}

@@ -1,0 +1,46 @@
+{
+  "name": "commentguard",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AI Instagram comment moderator for one creator account (official Instagram API only).",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx scripts/migrate.ts",
+    "hash-password": "tsx scripts/hash-password.ts",
+    "gen-key": "tsx scripts/gen-key.ts",
+    "tick": "tsx scripts/tick.ts"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "drizzle-orm": "^0.45.4",
+    "jose": "^6.2.17",
+    "lucide-react": "^1.73.0",
+    "next": "^16.4.6",
+    "postgres": "^3.4.5",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "server-only": "^0.0.1",
+    "tailwind-merge": "^3.7.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.5",
+    "@types/node": "^26.6.6",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "dotenv": "^18.0.10",
+    "drizzle-kit": "^0.31.11",
+    "tailwindcss": "^4.3.5",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3",
+    "vitest": "^5.1.0"
+  }
+}

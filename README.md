@@ -41,3 +41,7 @@ One place: `src/lib/data.js` → `WA_NUMBER` (international format, no `+`, e.g.
 - Testimonials section is built but hidden (`src/components/Testimonials.jsx`) — enable only with real client quotes.
 - FAQ answers marked `CONFIRM` need Ranojoy's confirmation (music licensing, revision rounds).
 - "Usually replies within a few hours" in Contact is marked CONFIRM too.
+
+## Also in this repo
+
+`commentguard/` is a separate app: an Instagram comment moderator (Next.js). See [commentguard/README.md](commentguard/README.md). It is not part of the portfolio build.

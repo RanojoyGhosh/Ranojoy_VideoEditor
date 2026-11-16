@@ -1,0 +1,45 @@
+"use server";
+
+import { redirect } from "next/navigation";
+import { verifyPassword } from "@/lib/auth/password";
+import { createSession, destroySession } from "@/lib/auth/session";
+import { env } from "@/lib/env";
+import { getSettings, setSetting } from "@/lib/settings";
+
+const MAX_FAILURES = 5;
+const LOCK_MINUTES = 15;
+
+export type LoginState = { error?: string; email?: string };
+
+export async function loginAction(_prev: LoginState, form: FormData): Promise<LoginState> {
+  const email = String(form.get("email") ?? "").trim().toLowerCase();
+  const password = String(form.get("password") ?? "");
+
+  const s = await getSettings(["auth.failCount", "auth.lockedUntil"]);
+  if (s["auth.lockedUntil"] && Date.parse(s["auth.lockedUntil"]) > Date.now()) {
+    return { error: `Too many wrong attempts. Try again after ${LOCK_MINUTES} minutes.`, email };
+  }
+
+  // Always run the (slow) hash check so timing doesn't reveal whether the email matched.
+  const passwordOk = await verifyPassword(password, env.adminPasswordHash);
+  if (!passwordOk || email !== env.adminEmail) {
+    const fails = (s["auth.failCount"] ?? 0) + 1;
+    if (fails >= MAX_FAILURES) {
+      await setSetting("auth.lockedUntil", new Date(Date.now() + LOCK_MINUTES * 60_000).toISOString());
+      await setSetting("auth.failCount", 0);
+    } else {
+      await setSetting("auth.failCount", fails);
+    }
+    return { error: "Wrong email or password.", email };
+  }
+
+  await setSetting("auth.failCount", 0);
+  await setSetting("auth.lockedUntil", null);
+  await createSession(email);
+  redirect("/");
+}
+
+export async function logoutAction() {
+  await destroySession();
+  redirect("/login");
+}
